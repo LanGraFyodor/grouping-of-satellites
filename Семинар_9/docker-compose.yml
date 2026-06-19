@@ -1,0 +1,53 @@
+name: satellite-seminar-9
+
+services:
+  server:
+    image: satellite/space-operation-center:1.0.0
+    build:
+      context: ./space-operation-center
+      dockerfile: Dockerfile
+    environment:
+      SERVER_PORT: "8080"
+    ports:
+      - "8080:8080"
+    networks:
+      - satellite-network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q --spider http://localhost:8080/actuator/health/readiness || exit 1
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+
+  mission-service:
+    image: satellite/mission-scheduler:1.0.0
+    build:
+      context: ./mission-scheduler
+      dockerfile: Dockerfile
+    environment:
+      SERVER_PORT: "8081"
+      SERVER_URL: "http://server:8080/api"
+    ports:
+      - "8081:8081"
+    networks:
+      - satellite-network
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q --spider http://localhost:8081/actuator/health/readiness || exit 1
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+
+networks:
+  satellite-network:
+    name: satellite-seminar-9-network
+    driver: bridge
